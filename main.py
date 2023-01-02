@@ -2,9 +2,9 @@
 import kfp.dsl as dsl
 import kfp
 from kfp.components import create_component_from_func,InputPath, OutputPath
-
-
-client = kfp.Client('http://localhost:8080')
+from kfp import compiler
+# defalut will be a service in the same cluster
+client = kfp.Client()
 
 
 
@@ -18,17 +18,17 @@ def get_data(output_path:OutputPath(str)):
     c.to_csv(output_path)
 
 
-get_data_task = create_component_from_func(get_data,base_image='amancevice/pandas:x.y.z-alpine')
+get_data_task = create_component_from_func(get_data,base_image='amancevice/pandas')
 
 
-def transform_data(input_path=InputPath(str)):
+def transform_data(input_path:InputPath(str)):
     import pandas as pd
     data=pd.read_csv(input_path)
     tfm_data=data.groupby(by=['Region'])['Country'].apply(list).reset_index()
     print(tfm_data)
 
 
-transform_data_task = create_component_from_func(transform_data)
+transform_data_task = create_component_from_func(transform_data,base_image='amancevice/pandas')
 
 
 import kfp.dsl as dsl
@@ -38,6 +38,8 @@ import kfp.dsl as dsl
 )
 def etl_pipeline():
    first_task = get_data_task() 
-   second_task = transform_data_task(input_path=first_task.outputs['output'])
+   second_task = transform_data_task(input=first_task.outputs['output'])
 arguements={}
-client.create_run_from_pipeline_func(etl_pipeline,arguments=arguements)
+
+cmplr = compiler.Compiler()
+cmplr.compile(etl_pipeline, package_path='etl_pipeline.yaml')
