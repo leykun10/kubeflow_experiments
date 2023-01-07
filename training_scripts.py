@@ -4,7 +4,8 @@
 def load_data():
     pass
 
+def preprocess_data():
+    pass
 
-
-def trainModel():
+def train_model():
     pass
